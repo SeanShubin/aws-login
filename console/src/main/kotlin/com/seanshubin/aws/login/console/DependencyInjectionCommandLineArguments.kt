@@ -23,6 +23,7 @@ class DependencyInjectionCommandLineArguments(args: Array<String>) {
       .configure(SerializationFeature.INDENT_OUTPUT, true)
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   private val cacheDir: Path = Paths.get("out/cache")
+  private val exportStatementsDir = Paths.get("out/export")
   private val profileDir: Path = Paths.get("local-config/profile")
   private val files: FilesContract = FilesDelegate
   private val stsClient: StsClient = StsClient.builder().build()
@@ -32,6 +33,7 @@ class DependencyInjectionCommandLineArguments(args: Array<String>) {
   private val credentialsFactory: CredentialsFactory = CredentialsFactoryImpl(
       objectMapper,
       cacheDir,
+      exportStatementsDir,
       profileDir,
       files,
       stsClient,

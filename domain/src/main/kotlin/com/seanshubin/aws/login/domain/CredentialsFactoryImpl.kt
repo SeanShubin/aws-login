@@ -14,6 +14,7 @@ import java.nio.file.Path
 class CredentialsFactoryImpl(
     private val objectMapper: ObjectMapper,
     private val cacheDir: Path,
+    private val exportStatementsDir: Path,
     private val profileDir: Path,
     private val files: FilesContract,
     private val stsClient: StsClient,
@@ -24,6 +25,7 @@ class CredentialsFactoryImpl(
     val profile = loadProfile(profileName)
     val credentials = loadFromSts(profile, token)
     storeInCache(profile.sessionName, credentials)
+    storeAsExportStatements(profile.sessionName, credentials)
     return credentials.toAwsCredentialsProvider()
   }
 
@@ -85,9 +87,22 @@ class CredentialsFactoryImpl(
 
   private fun storeInCache(sessionName: String, credentials: Credentials) {
     val jsonCredentials = objectMapper.writeValueAsString(credentials)
-    val fileName = fileNameForSession(sessionName)
+    val path = cacheDir.resolve("$sessionName.json")
     ensureCacheDirectoryExists()
-    files.writeString(fileName, jsonCredentials)
+    files.writeString(path, jsonCredentials)
+  }
+
+  private fun storeAsExportStatements(sessionName: String, credentials: Credentials) {
+    val exportStatements = listOf(
+        "export AWS_STS_COMMAND=\"${credentials.signInConsole}\"",
+        "export AWS_ACCESS_KEY_ID=\"${credentials.accessKeyId}\"",
+        "export AWS_SECRET_ACCESS_KEY=\"${credentials.secretAccessKey}\"",
+        "export AWS_SESSION_TOKEN=\"${credentials.sessionToken}\"",
+        "export AWS_SESSION_URL=\"${credentials.signInUrl}\""
+    )
+    val path = exportStatementsDir.resolve("$sessionName.txt")
+    ensureExportStatementsDirectoryExists()
+    files.write(path, exportStatements)
   }
 
   private fun ensureCacheDirectoryExists() {
@@ -96,5 +111,9 @@ class CredentialsFactoryImpl(
     }
   }
 
-  private fun fileNameForSession(sessionName: String): Path = cacheDir.resolve("$sessionName.json")
+  private fun ensureExportStatementsDirectoryExists() {
+    if (!files.exists(exportStatementsDir)) {
+      files.createDirectories(exportStatementsDir)
+    }
+  }
 }
